@@ -17,7 +17,7 @@ import (
 type Event struct {
 	Name string // Relative path to the file or directory.
 	Op   Op     // File operation that triggered the event.
-	Pid  uint32 
+	Pid  int 
 }
 
 // Op describes a set of file operations.
