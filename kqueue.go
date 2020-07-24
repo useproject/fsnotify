@@ -99,6 +99,9 @@ func (w *Watcher) Add(name string) error {
 	return err
 }
 
+func (w *Watcher) AddEvents(name string,op Op) error {
+	return err
+}
 // Remove stops watching the the named file or directory (non-recursively).
 func (w *Watcher) Remove(name string) error {
 	name = filepath.Clean(name)
