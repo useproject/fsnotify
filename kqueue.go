@@ -100,6 +100,10 @@ func (w *Watcher) Add(name string) error {
 }
 
 func (w *Watcher) AddEvents(name string,op Op) error {
+	w.mu.Lock()
+	w.externalWatches[name] = true
+	w.mu.Unlock()
+	_, err := w.addWatch(name, noteAllEvents)
 	return err
 }
 // Remove stops watching the the named file or directory (non-recursively).
