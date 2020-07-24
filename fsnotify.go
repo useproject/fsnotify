@@ -78,3 +78,5 @@ func (e Event) String() string {
 var (
 	ErrEventOverflow = errors.New("fsnotify queue overflow")
 )
+
+
