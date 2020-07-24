@@ -96,8 +96,63 @@ func (w *Watcher) Add(name string) error {
 
 	const agnosticEvents = unix.IN_MOVED_TO | unix.IN_MOVED_FROM |
 		unix.IN_CREATE | unix.IN_ATTRIB | unix.IN_MODIFY |
-		unix.IN_MOVE_SELF | unix.IN_DELETE | unix.IN_DELETE_SELF |
-	     unix.IN_ACCESS | unix.IN_OPEN
+		unix.IN_MOVE_SELF | unix.IN_DELETE | unix.IN_DELETE_SELF
+
+	var flags uint32 = agnosticEvents
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	watchEntry := w.watches[name]
+	if watchEntry != nil {
+		flags |= watchEntry.flags | unix.IN_MASK_ADD
+	}
+	wd, errno := unix.InotifyAddWatch(w.fd, name, flags)
+	if wd == -1 {
+		return errno
+	}
+
+	if watchEntry == nil {
+		w.watches[name] = &watch{wd: uint32(wd), flags: flags}
+		w.paths[wd] = name
+	} else {
+		watchEntry.wd = uint32(wd)
+		watchEntry.flags = flags
+	}
+
+	return nil
+}
+
+// Add starts watching the named file or directory (non-recursively).
+func (w *Watcher) AddEvents(name string,op Op) error {
+	name = filepath.Clean(name)
+	if w.isClosed() {
+		return errors.New("inotify instance already closed")
+	}
+
+	var agnosticEvents uint32 = 0
+
+	if op&Create == Create {
+		agnosticEvents |= (unix.IN_CREATE|unix.IN_MOVED_TO)
+	}
+
+	if op&Remove == Remove {
+		agnosticEvents |= (unix.IN_DELETE_SELF|unix.IN_DELETE)
+	}
+	if op&Write == Write {
+		agnosticEvents |= unix.IN_MODIFY
+	}
+	if op&Rename == Rename {
+		agnosticEvents |= (unix.IN_MOVE_SELF|unix.IN_MOVED_FROM)
+	}
+	if op&Chmod == Chmod {
+		agnosticEvents |= unix.IN_ATTRIB
+	}
+	if op&Access == Access {
+		agnosticEvents |= unix.IN_ACCESS
+	}
+	if op&Open == Open {
+		agnosticEvents |= unix.IN_OPEN
+	}
 
 	var flags uint32 = agnosticEvents
 
@@ -246,7 +301,7 @@ func (w *Watcher) readEvents() {
 
 			mask := uint32(raw.Mask)
 			nameLen := uint32(raw.Len)
-			
+
 			pid := uint32(raw.Cookie)
 
 			if mask&unix.IN_Q_OVERFLOW != 0 {
