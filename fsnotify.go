@@ -34,6 +34,9 @@ const (
 	Open
 )
 
+const Default Op = Create|Write|Remove|Rename|Chmod
+const All  Op = Create|Write|Remove|Rename|Chmod|Access|Open
+
 func (op Op) String() string {
 	// Use a buffer for efficient string concatenation
 	var buffer bytes.Buffer
@@ -59,7 +62,6 @@ func (op Op) String() string {
 	if op&Open == Open {
 		buffer.WriteString("|OPEN")
 	}
-	
 	if buffer.Len() == 0 {
 		return ""
 	}
